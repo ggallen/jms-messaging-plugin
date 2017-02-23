@@ -1,13 +1,13 @@
 package com.redhat.jenkins.plugins.ci.messaging;
 
-import com.redhat.jenkins.plugins.ci.authentication.activemq.UsernameAuthenticationMethod;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.Descriptor;
+import hudson.util.Secret;
 
+import java.util.List;
 import java.util.logging.Logger;
 
-import hudson.util.Secret;
 import jenkins.model.Jenkins;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -17,6 +17,8 @@ import org.kohsuke.stapler.DataBoundSetter;
 
 import com.redhat.jenkins.plugins.ci.authentication.AuthenticationMethod.AuthenticationMethodDescriptor;
 import com.redhat.jenkins.plugins.ci.authentication.activemq.ActiveMQAuthenticationMethod;
+import com.redhat.jenkins.plugins.ci.authentication.activemq.UsernameAuthenticationMethod;
+import com.redhat.jenkins.plugins.ci.listeners.activemq.ActiveMQCompletedBuildListener;
 
 /*
  * The MIT License
@@ -49,14 +51,17 @@ public class ActiveMqMessagingProvider extends JMSMessagingProvider {
     private transient Secret password;
     private transient boolean migrationInProgress = false;
     private ActiveMQAuthenticationMethod authenticationMethod;
+    private List<ActiveMQCompletedBuildListener> cbListeners;
     private transient static final Logger log = Logger.getLogger(ActiveMqMessagingProvider.class.getName());
 
     @DataBoundConstructor
-    public ActiveMqMessagingProvider(String name, String broker, String topic, ActiveMQAuthenticationMethod authenticationMethod) {
+    public ActiveMqMessagingProvider(String name, String broker, String topic, ActiveMQAuthenticationMethod authenticationMethod,
+            List<ActiveMQCompletedBuildListener> cbListeners) {
         this.name = name;
         this.broker = broker;
         this.topic = topic;
         this.authenticationMethod = authenticationMethod;
+        this.cbListeners = cbListeners;
     }
 
     protected Object readResolve() {
@@ -69,7 +74,7 @@ public class ActiveMqMessagingProvider extends JMSMessagingProvider {
         return this;
     }
 
-        @DataBoundSetter
+    @DataBoundSetter
     public void setBroker(String broker) {
         this.broker = StringUtils.strip(StringUtils.stripToNull(broker), "/");
     }
@@ -82,6 +87,11 @@ public class ActiveMqMessagingProvider extends JMSMessagingProvider {
     @DataBoundSetter
     public void setAuthenticationMethod(ActiveMQAuthenticationMethod method) {
         this.authenticationMethod = method;
+    }
+
+    @DataBoundSetter
+    public void setCbListeners(List<ActiveMQCompletedBuildListener> cbListeners) {
+        this.cbListeners = cbListeners;
     }
 
     @Override
@@ -99,6 +109,10 @@ public class ActiveMqMessagingProvider extends JMSMessagingProvider {
 
     public ActiveMQAuthenticationMethod getAuthenticationMethod() {
         return authenticationMethod;
+    }
+
+    public List<ActiveMQCompletedBuildListener> getCbListeners() {
+        return cbListeners;
     }
 
     public ActiveMQConnectionFactory getConnectionFactory() {

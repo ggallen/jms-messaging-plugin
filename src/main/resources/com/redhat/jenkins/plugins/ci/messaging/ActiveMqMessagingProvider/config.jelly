@@ -1,5 +1,5 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <!--
+    <!--
      * The MIT License
      *
      * Copyright (c) Red Hat, Inc.
@@ -22,22 +22,62 @@
      * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
      * THE SOFTWARE.
      */
-  -->
+    -->
     <?jelly escape-by-default='true'?>
     <f:section title="Connection Properties">
-    <f:entry title="Name" field="name">
-      <f:textbox />
-    </f:entry>
-    <f:entry title="${%CI Broker URL}" field="broker">
-      <f:textbox />
-    </f:entry>
-    <f:entry title="${%Topic name}" field="topic">
-      <f:textbox />
-    </f:entry>
-    <f:descriptorRadioList title="${%Authentication Method}"
-                         descriptors="${descriptor.getAuthenticationMethodDescriptors()}"
-                         instance="${instance.authenticationMethod}"
-                         varName="authenticationMethod"/>
-  </f:section>
+        <f:entry title="Name" field="name">
+            <f:textbox />
+        </f:entry>
+        <f:entry title="${%CI Broker URL}" field="broker">
+            <f:textbox />
+        </f:entry>
+        <f:entry title="${%Topic name}" field="topic">
+            <f:textbox />
+        </f:entry>
+    </f:section>
+    <f:descriptorRadioList title="${%Authentication Method}" descriptors="${descriptor.getAuthenticationMethodDescriptors()}" instance="${instance.authenticationMethod}" varName="authenticationMethod" />
+    <f:section title="Completed Build Listeners">
+        <f:block>
+            <f:repeatable field="cbListeners" minimum="0">
+                <table width="100%">
+                    <f:entry title="${%Topic name}" field="topic">
+                        <f:textbox />
+                    </f:entry>
+                    <f:entry title="${%Properties}">
+                        <f:repeatable field="props" minimum="0">
+                            <table width="100%">
+                                <tr>
+                                    <th align="left">Type</th>
+                                    <th align="left">Name</th>
+                                    <th align="left">Value</th>
+                                    <th align="left"></th>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <f:select field="type" />
+                                    </td>
+                                    <td>
+                                        <f:textbox field="name" />
+                                    </td>
+                                    <td>
+                                        <f:textbox field="value" />
+                                    </td>
+                                    <td>
+                                        <f:repeatableDeleteButton />
+                                    </td>
+                                </tr>
+                            </table>
+                        </f:repeatable>
+                    </f:entry>
+                    <f:entry title="${%Message}" field="message">
+                        <f:textarea />
+                    </f:entry>
+                    <f:entry>
+                        <f:repeatableDeleteButton />
+                    </f:entry>
+                </table>
+            </f:repeatable>
+        </f:block>
+    </f:section>
 </j:jelly>
 
