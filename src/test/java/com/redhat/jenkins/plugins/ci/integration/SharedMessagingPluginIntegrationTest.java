@@ -384,6 +384,10 @@ public class SharedMessagingPluginIntegrationTest extends AbstractJUnitTest {
     }
 
     public void _testSimpleCIEventSubscribeWithNoParamOverride() {
+        _testSimpleCIEventSubscribeWithNoParamOverride(true);
+    }
+
+    public void _testSimpleCIEventSubscribeWithNoParamOverride(boolean selector) {
         // Job parameters are NOT overridden when the subscribe build step is used.
         FreeStyleJob jobA = jenkins.jobs.create();
         jobA.configure();
@@ -393,7 +397,13 @@ public class SharedMessagingPluginIntegrationTest extends AbstractJUnitTest {
         ciStatusParam.setDefault("original parameter value");
 
         CISubscriberBuildStep subscriber = jobA.addBuildStep(CISubscriberBuildStep.class);
-        subscriber.selector.set("CI_TYPE = 'code-quality-checks-done'");
+        if (selector) {
+            subscriber.selector.set("CI_TYPE = 'code-quality-checks-done'");
+        } else {
+//            MsgCheck check = subscriber.addMsgCheck();
+//            check.field.set("CI_TYPE");
+//            check.expectedValue.set("code-quality-checks-done");
+        }
         subscriber.variable.set("MESSAGE_CONTENT");
 
         jobA.addShellStep("echo $PARAMETER");

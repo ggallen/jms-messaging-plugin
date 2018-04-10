@@ -12,8 +12,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import com.redhat.jenkins.plugins.ci.integration.po.CINotifierPostBuildStep;
-import com.redhat.jenkins.plugins.ci.messaging.JMSMessagingWorker;
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.test.acceptance.docker.DockerContainerHolder;
 import org.jenkinsci.test.acceptance.junit.WithDocker;
@@ -28,8 +26,10 @@ import org.junit.Test;
 import com.google.inject.Inject;
 import com.redhat.jenkins.plugins.ci.integration.docker.fixtures.FedmsgRelayContainer;
 import com.redhat.jenkins.plugins.ci.integration.po.CIEventTrigger;
+import com.redhat.jenkins.plugins.ci.integration.po.CINotifierPostBuildStep;
 import com.redhat.jenkins.plugins.ci.integration.po.FedMsgMessagingProvider;
 import com.redhat.jenkins.plugins.ci.integration.po.GlobalCIConfiguration;
+import com.redhat.jenkins.plugins.ci.messaging.JMSMessagingWorker;
 
 /*
  * The MIT License
@@ -104,11 +104,6 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
     }
 
     @Test
-    public void testSimpleCIEventTriggerWithWildcardInSelector() throws Exception {
-        _testSimpleCIEventTriggerWithWildcardInSelector();
-    }
-
-    @Test
     public void testSimpleCIEventTriggerWithRegExpCheck() throws Exception {
         _testSimpleCIEventTriggerWithRegExpCheck();
     }
@@ -137,7 +132,7 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
 
     @Test
     public void testSimpleCIEventSubscribeWithNoParamOverride() throws Exception, InterruptedException {
-        _testSimpleCIEventSubscribeWithNoParamOverride();
+        _testSimpleCIEventSubscribeWithNoParamOverride(false);
     }
 
     @WithPlugins("workflow-aggregator")
@@ -239,7 +234,9 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
         jobA.configure();
         jobA.addShellStep("echo CI_MESSAGE = $CI_MESSAGE");
         CIEventTrigger ciEvent = new CIEventTrigger(jobA);
-        ciEvent.selector.set("topic = 'org.fedoraproject.dev.logger.log'");
+        CIEventTrigger.MsgCheck topicCheck = ciEvent.addMsgCheck();
+        topicCheck.expectedValue.set("org.fedoraproject.dev.logger.log");
+        topicCheck.field.set("topic");
         CIEventTrigger.MsgCheck repoCheck = ciEvent.addMsgCheck();
         repoCheck.expectedValue.set(packages);
         repoCheck.field.set("$.commit.repo");
@@ -291,9 +288,7 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
 
         WorkflowJob wait = jenkins.jobs.create(WorkflowJob.class);
         wait.script.set("node('master') {\n def scott = waitForCIMessage providerName: 'test'," +
-                "selector: " +
-                " \"topic = 'org.fedoraproject.dev.logger.log' OR topic = 'org.fedoraproject.dev.logger.log2'\",  " +
-                " checks: [[expectedValue: '" + packages +"', field: '$.commit.repo']]," +
+                " checks: [[expectedValue: 'org.fedoraproject.dev.logger.log2?', field: 'topic'], [expectedValue: '" + packages +"', field: '$.commit.repo']]," +
                 " topic: 'org.fedoraproject'" +
                 "\necho \"scott = \" + scott}");
         wait.save();
@@ -345,7 +340,6 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
         jobA.addShellStep("echo CI_TYPE = $CI_TYPE");
         jobA.addShellStep("echo CI_MESSAGE = $CI_MESSAGE");
         CIEventTrigger ciEvent = new CIEventTrigger(jobA);
-        ciEvent.selector.set("CI_TYPE = 'code-quality-checks-done' and CI_STATUS = 'failed'");
         CIEventTrigger.MsgCheck check = ciEvent.addMsgCheck();
         check.expectedValue.set("Catch me");
         check.field.set(JMSMessagingWorker.MESSAGECONTENTFIELD);
@@ -372,8 +366,10 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
         jobA.configure();
         jobA.addShellStep("echo CI_MESSAGE = $CI_MESSAGE");
         CIEventTrigger ciEvent = new CIEventTrigger(jobA);
-        ciEvent.selector.set(topic);
         CIEventTrigger.MsgCheck check = ciEvent.addMsgCheck();
+        check.expectedValue.set(topic);
+        check.field.set("topic");
+        check = ciEvent.addMsgCheck();
         check.expectedValue.set(".+compose_id.+message.+");
         check.field.set("compose");
         jobA.save();
@@ -434,7 +430,7 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
         workflowJob.script.set("properties(\n" +
                 "        [\n" +
                 "                pipelineTriggers(\n" +
-                "  [[$class: 'CIBuildTrigger', checks: [], providerName: 'test', selector: 'topic = \"org.fedoraproject.dev.logger.log\"']]\n" +
+                "  [[$class: 'CIBuildTrigger', checks: [expectedValue: 'org.fedoraproject.dev.logger.log', field: 'topic'], providerName: 'test']]\n" +
                 "                )\n" +
                 "        ]\n" +
                 ")\nnode('master') {\n sleep 1\n}");
@@ -473,7 +469,7 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
                 "properties(\n" +
                 "        [\n" +
                 "                pipelineTriggers(\n" +
-                "  [[$class: 'CIBuildTrigger', checks: [], providerName: 'test', selector: 'CI_STATUS between 0 and ' + r.toString() + '\\'']]\n" +
+                "  [[$class: 'CIBuildTrigger', checks: [[expectedValue: '3.0', field: 'CI_STATUS']], providerName: 'test']]\n" +
                 "                )\n" +
                 "        ]\n" +
                 ")\n" +
@@ -487,7 +483,7 @@ public class FedMsgMessagingPluginIntegrationTest extends SharedMessagingPluginI
         elasticSleep(5000);
 
         Double randomStatus = Math.random();
-        String message2 = "{ \"CI_STATUS\": " + randomStatus.toString() +" }";
+        String message2 = "{ \"CI_STATUS\": 3.0 }";
         System.out.println("Starting rapid fire - WITH property changes.");
         for (int i = 1 ; i <= 3 ; i++) {
             sendFedMsgMessageUsingLogger(message2);
