@@ -154,6 +154,11 @@ public class AmqMessagingPluginIntegrationTest extends SharedMessagingPluginInte
     }
 
     @Test
+    public void testSimpleCIEventTriggerWithMultipleTopics() throws Exception {
+        _testSimpleCIEventTriggerWithMultipleTopics();
+    }
+
+    @Test
     public void testSimpleCIEventTriggerWithCheckWithTopicOverride() throws Exception {
         _testSimpleCIEventTriggerWithCheckWithTopicOverride();
     }
@@ -343,7 +348,7 @@ public class AmqMessagingPluginIntegrationTest extends SharedMessagingPluginInte
                 "properties(\n" +
                 "        [\n" +
                 "                pipelineTriggers(\n" +
-                "  [[$class: 'CIBuildTrigger', noSquash: false, providerData: [$class: 'ActiveMQSubscriberProviderData', name: 'test', selector: 'CI_NAME = \\'" + send.name + "\\'']]]\n" +
+                "  [[$class: 'CIBuildTrigger', noSquash: false, providers: [[$class: 'ActiveMQSubscriberProviderData', name: 'test', selector: 'CI_NAME = \\'" + send.name + "\\'']]]]\n" +
                 "                )\n" +
                 "        ]\n" +
                 ")\nnode('master') {\n sleep 1\n}");
